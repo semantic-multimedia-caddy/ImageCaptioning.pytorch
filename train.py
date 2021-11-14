@@ -23,7 +23,7 @@ import captioning.utils.eval_utils as eval_utils
 import captioning.utils.misc as utils
 from captioning.utils.rewards import init_scorer, get_self_critical_reward
 from captioning.modules.loss_wrapper import LossWrapper
-from distributed_utils import average_gradients
+from distributed_utils import average_gradients, setup, cleanup
 
 
 def add_summary_value(writer, key, value, iteration):
@@ -31,6 +31,8 @@ def add_summary_value(writer, key, value, iteration):
         writer.add_scalar(key, value, iteration)
 
 def train(rank, opt, world_size):
+    setup(rank, world_size)
+    
     ################################
     # Build dataloader
     ################################
