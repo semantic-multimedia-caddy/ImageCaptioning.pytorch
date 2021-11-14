@@ -1,11 +1,15 @@
 import torch
 from torch import multiprocessing as mp
 import captioning.utils.opts as opts
+from distributed_utils import setup, cleanup
 
 
-def run(batch_size, epochs, eta, fine_tune):
+NUM_WORKERS = 2
+
+
+def run():
     opt = opts.parse_opt()
-    world_size = torch.cuda.device_count()
+    world_size = NUM_WORKERS
     mp.spawn(train, args=(opt, world_size), nprocs=world_size, join=True)
     
     
