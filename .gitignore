@@ -1,0 +1,7 @@
+vis/
+**/__pycache__/
+**/.ipynb_checkpoints/
+test_images/
+models/
+cider/
+coco-caption/
