@@ -31,7 +31,7 @@ def add_summary_value(writer, key, value, iteration):
         writer.add_scalar(key, value, iteration)
 
 def train(rank, opt, world_size):
-    setup(rank, world_size)
+    setup(opt)
     
     ################################
     # Build dataloader

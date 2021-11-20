@@ -12,7 +12,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 def setup(opt):
     os.environ["MASTER_ADDR"] = opt.master
     # os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = opt.port
+    os.environ["MASTER_PORT"] = f"{opt.port}"
     os.environ["RANK"] = f"{opt.rank}"
     os.environ["WORLD_SIZE"] = f"{opt.world_size}"
     
