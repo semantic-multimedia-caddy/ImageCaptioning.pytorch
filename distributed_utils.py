@@ -9,14 +9,14 @@ from torch import multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 
-def setup(rank, world_size):
-    os.environ["MASTER_ADDR"] = "ec2-3-35-27-164.ap-northeast-2.compute.amazonaws.com"
+def setup(opt):
+    os.environ["MASTER_ADDR"] = opt.master
     # os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "25555"
-    os.environ["RANK"] = f"{rank}"
-    os.environ["WORLD_SIZE"] = f"{world_size}"
+    os.environ["MASTER_PORT"] = opt.port
+    os.environ["RANK"] = f"{opt.rank}"
+    os.environ["WORLD_SIZE"] = f"{opt.world_size}"
     
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)    
+    dist.init_process_group("nccl", rank=opt.rank, world_size=opt.world_size)    
 
 
 def cleanup():
