@@ -17,6 +17,14 @@ def if_use_feat(caption_model):
 
 def parse_opt():
     parser = argparse.ArgumentParser()
+
+    ### 수정된 부분 ###
+    parser.add_argument("--rank", type=int, required=True)
+    parser.add_argument("--master", type=str, required=True)
+    parser.add_argument("--port", type=int, required=True)
+    parser.add_argument("--world_size", type=int, required=True)
+    ###################
+
     # Data input settings
     parser.add_argument('--input_json', type=str, default='data/coco.json',
                     help='path to the json file containing additional info and vocab')
