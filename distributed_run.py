@@ -3,7 +3,7 @@ import torch
 from torch import multiprocessing as mp
 import captioning.utils.opts as opts
 from distributed_utils import setup, cleanup
-from train import train
+from train_distributed import train
 
 
 def run():

@@ -31,6 +31,9 @@ def add_summary_value(writer, key, value, iteration):
         writer.add_scalar(key, value, iteration)
 
 def train(rank, opt, world_size):
+    if world_size > 1:
+        setup(opt)
+    
     ################################
     # Build dataloader
     ################################
@@ -199,6 +202,10 @@ def train(rank, opt, world_size):
             loss.backward()
             if opt.grad_clip_value != 0:
                 getattr(torch.nn.utils, 'clip_grad_%s_' %(opt.grad_clip_mode))(model.parameters(), opt.grad_clip_value)
+                
+            ### 수정된 부분 ###
+            average_gradients(model)
+            ###################
             
             optimizer.step()
             train_loss = loss.item()

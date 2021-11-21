@@ -1,0 +1,19 @@
+python train.py --id fc \
+                --caption_model newfc \
+                --input_json data/f8ktalk.json \
+                --input_fc_dir data/f8ktalk_fc \
+                --input_att_dir data/f8ktalk_att \
+                --input_label_h5 data/f8ktalk_label.h5 \
+                --batch_size 10 \
+                --learning_rate 5e-4 \
+                --learning_rate_decay_start 0 \
+                --scheduled_sampling_start 0 \
+                --checkpoint_path log_fc \
+                --save_checkpoint_every 6000 \
+                --val_images_use 5000 \
+                --max_epochs 30 \
+                --rank 0 \
+                --master localhost \
+                --world_size 1 \
+                --port 25555 \
+                --start_from None

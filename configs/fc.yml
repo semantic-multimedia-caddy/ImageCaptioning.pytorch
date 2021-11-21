@@ -1,8 +1,14 @@
 caption_model: newfc
-input_json: data/cocotalk.json
-input_fc_dir: data/cocotalk_fc
-input_att_dir: data/cocotalk_att
-input_label_h5: data/cocotalk_label.h5
+input_json: data/f8ktalk.json
+input_fc_dir: data/f8ktalk_fc
+input_att_dir: data/f8ktalk_att
+input_label_h5: data/f8ktalk_label.h5
+
+# input_json: data/cocotalk.json
+# input_fc_dir: data/cocotalk_fc
+# input_att_dir: data/cocotalk_att
+# input_label_h5: data/cocotalk_label.h5
+
 learning_rate: 0.0005
 learning_rate_decay_start: 0
 scheduled_sampling_start: 0
@@ -14,3 +20,8 @@ val_images_use: 5000
 
 batch_size: 10
 max_epochs: 30
+
+master: ec2-3-37-4-242.ap-northeast-2.compute.amazonaws.com
+port: 25555
+rank: 0
+world_size: 2

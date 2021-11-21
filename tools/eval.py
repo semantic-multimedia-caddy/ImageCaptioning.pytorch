@@ -7,6 +7,10 @@ import numpy as np
 
 import time
 import os
+import sys
+
+sys.path.append("../")
+
 from six.moves import cPickle
 
 import captioning.utils.opts as opts

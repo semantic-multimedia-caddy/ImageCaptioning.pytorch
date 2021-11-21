@@ -1,1 +1,1 @@
-python eval.py --model mdoels/model-best.pth --infos_path models/infos_fc-best.pkl --image_folder test_images --num_images -1
+python eval.py --model log_fc/model-best.pth --infos_path log_fc/infos_fc-best.pkl --image_folder test_images --num_images 2
