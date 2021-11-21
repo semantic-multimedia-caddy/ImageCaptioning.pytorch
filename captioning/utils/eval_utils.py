@@ -203,8 +203,13 @@ def eval_split(model, crit, loader, eval_kwargs={}):
             ix1 = min(ix1, num_images)
         else:
             num_images = ix1
-        for i in range(n - ix1):
+        # for i in range(n - ix1):
+        #     predictions.pop()
+
+        ##### 수정한 부분 #####
+        while len(predictions) > 0:
             predictions.pop()
+        ######################
 
         if verbose:
             print('evaluating validation preformance... %d/%d (%f)' %(n, ix1, loss))
