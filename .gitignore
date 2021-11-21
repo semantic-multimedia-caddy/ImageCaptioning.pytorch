@@ -3,5 +3,8 @@ vis/
 **/.ipynb_checkpoints/
 test_images/
 models/
+data/
+log*/
+*.json
 cider/
 coco-caption/
