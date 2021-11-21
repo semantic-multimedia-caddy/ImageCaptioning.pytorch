@@ -16,7 +16,9 @@ def setup(opt):
     os.environ["RANK"] = f"{opt.rank}"
     os.environ["WORLD_SIZE"] = f"{opt.world_size}"
     
+    print("Connecting...")
     dist.init_process_group("nccl", rank=opt.rank, world_size=opt.world_size)    
+    print("Connected!")
 
 
 def cleanup():
@@ -27,7 +29,7 @@ def cleanup():
 def average_gradients(model):
     size = float(dist.get_world_size())
     for param in model.parameters():
-        dist.reduce(param.grad.data, op=dist.ReduceOp.SUM)
+        dist.all_reduce(param.grad.data, op=dist.ReduceOp.SUM)
         param.grad.data /= size
 
     
