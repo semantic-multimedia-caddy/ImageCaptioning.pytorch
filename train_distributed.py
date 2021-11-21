@@ -15,6 +15,7 @@ from six.moves import cPickle
 import traceback
 from collections import defaultdict
 
+import horovod.torch import hvd
 import captioning.utils.opts as opts
 import captioning.models as models
 from captioning.data.dataloader import *
@@ -31,6 +32,9 @@ def add_summary_value(writer, key, value, iteration):
         writer.add_scalar(key, value, iteration)
 
 def train(rank, opt, world_size):
+    hvd.init()
+    torch.cuda.set_device(hvd.local_rank())
+
     if world_size > 1:
         setup(opt)
     
@@ -86,9 +90,9 @@ def train(rank, opt, world_size):
     # This allows loss function computed separately on each machine
     lw_model = LossWrapper(model, opt)
     # Wrap with dataparallel
-    dp_model = torch.nn.DataParallel(model)
-    dp_model.vocab = getattr(model, 'vocab', None)  # nasty
-    dp_lw_model = torch.nn.DataParallel(lw_model)
+    # dp_model = torch.nn.DataParallel(model)
+    # dp_model.vocab = getattr(model, 'vocab', None)  # nasty
+    # dp_lw_model = torch.nn.DataParallel(lw_model)
 
     ##########################
     #  Build optimizer
@@ -107,6 +111,10 @@ def train(rank, opt, world_size):
     if opt.start_from is not None and os.path.isfile(os.path.join(opt.start_from,"optimizer.pth")):
         optimizer.load_state_dict(torch.load(os.path.join(opt.start_from, 'optimizer.pth')))
 
+    optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters())
+    hvd.broadcast_parameters(model.state_dict(), root_rank=0)
+    hvd.broadcast_optimizer_state(optimizer, root_rank=0)
+
     #########################
     # Get ready to start
     #########################
@@ -124,7 +132,8 @@ def train(rank, opt, world_size):
     # Always set to True at the beginning to initialize the lr or etc.
     epoch_done = True
     # Assure in training mode
-    dp_lw_model.train()
+    # dp_lw_model.train()
+    lw_model.train()
 
     # Start training
     try:
@@ -191,7 +200,8 @@ def train(rank, opt, world_size):
             # print(labels.size()) 
             # print(masks.size())
 
-            model_out = dp_lw_model(fc_feats, att_feats, labels, masks, att_masks, data['gts'], torch.arange(0, len(data['gts'])), sc_flag, struc_flag, drop_worst_flag)
+            # model_out = dp_lw_model(fc_feats, att_feats, labels, masks, att_masks, data['gts'], torch.arange(0, len(data['gts'])), sc_flag, struc_flag, drop_worst_flag)
+            model_out = lw_model(fc_feats, att_feats, labels, masks, att_masks, data['gts'], torch.arange(0, len(data['gts'])), sc_flag, struc_flag, drop_worst_flag)
 
             if not drop_worst_flag:
                 loss = model_out['loss'].mean()
@@ -262,8 +272,10 @@ def train(rank, opt, world_size):
                 eval_kwargs = {'split': 'val',
                                 'dataset': opt.input_json}
                 eval_kwargs.update(vars(opt))
+                # val_loss, predictions, lang_stats = eval_utils.eval_split(
+                #     dp_model, lw_model.crit, loader, eval_kwargs)
                 val_loss, predictions, lang_stats = eval_utils.eval_split(
-                    dp_model, lw_model.crit, loader, eval_kwargs)
+                    model, lw_model.crit, loader, eval_kwargs)
 
                 if opt.reduce_on_plateau:
                     if 'CIDEr' in lang_stats:
