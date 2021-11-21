@@ -8,7 +8,7 @@ from train_distributed import train
 
 def run():
     opt = opts.parse_opt()
-    # mp.spawn(train, args=(opt, world_size), nprocs=world_size, join=True)
+    # mp.spawn(train, args=(opt, opt.world_size), nprocs=1, join=True)
     train(opt.rank, opt, opt.world_size)
     
     

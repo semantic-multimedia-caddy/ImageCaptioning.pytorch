@@ -204,7 +204,9 @@ def train(rank, opt, world_size):
                 getattr(torch.nn.utils, 'clip_grad_%s_' %(opt.grad_clip_mode))(model.parameters(), opt.grad_clip_value)
                 
             ### 수정된 부분 ###
+            print("Averaging gradients...")
             average_gradients(model)
+            print("Gradient averaging completed!")
             ###################
             
             optimizer.step()

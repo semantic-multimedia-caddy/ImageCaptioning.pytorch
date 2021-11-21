@@ -8,3 +8,4 @@ log*/
 *.json
 cider/
 coco-caption/
+eval_results/

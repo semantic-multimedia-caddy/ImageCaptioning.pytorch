@@ -20,8 +20,3 @@ val_images_use: 5000
 
 batch_size: 10
 max_epochs: 30
-
-master: ec2-3-37-4-242.ap-northeast-2.compute.amazonaws.com
-port: 25555
-rank: 0
-world_size: 2
