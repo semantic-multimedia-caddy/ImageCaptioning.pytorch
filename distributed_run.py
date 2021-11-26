@@ -9,7 +9,7 @@ from train_distributed import train
 def run():
     opt = opts.parse_opt()
     # mp.spawn(train, args=(opt, opt.world_size), nprocs=1, join=True)
-    train(opt.rank, opt, opt.world_size)
+    train(opt)
     
     
 if __name__ == "__main__":

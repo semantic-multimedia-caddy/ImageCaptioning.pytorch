@@ -17,7 +17,7 @@ def setup(opt):
     os.environ["WORLD_SIZE"] = f"{opt.world_size}"
     
     print(f"Connecting... (rank: {opt.rank}, world size: {opt.world_size})")
-    dist.init_process_group("nccl", init_method=f"tcp://{opt.master}:{opt.port}", rank=opt.rank, world_size=opt.world_size)    
+    dist.init_process_group("nccl", rank=opt.rank, world_size=opt.world_size)    
     print("Connected!")
 
 
@@ -32,7 +32,7 @@ def average_gradients(model):
     size = float(dist.get_world_size())
 
     for param in model.parameters():
-        print("reducing...")
+        # print("reducing...")
 
         # if rank == 0:
         #     t = torch.zeros_like(param.grad.data)
@@ -45,7 +45,7 @@ def average_gradients(model):
         dist.reduce(param.grad.data, 0, op=dist.ReduceOp.SUM)
         # param.grad.data = grad_tensor
 
-        print("broadcasting...")
+        # print("broadcasting...")
         dist.broadcast(param.grad.data, 0)
         param.grad.data /= size
 

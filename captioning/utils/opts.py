@@ -23,6 +23,7 @@ def parse_opt():
     parser.add_argument("--master", type=str, required=True)
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--world_size", type=int, required=True)
+    parser.add_argument("--cpu", action="store_true", default=False)
     ###################
 
     # Data input settings

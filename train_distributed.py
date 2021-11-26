@@ -5,6 +5,7 @@ from __future__ import print_function
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.distributed as dist
 from torch.utils.tensorboard import SummaryWriter
 
 import numpy as np
@@ -15,7 +16,7 @@ from six.moves import cPickle
 import traceback
 from collections import defaultdict
 
-import horovod.torch import hvd
+# import horovod.torch as hvd
 import captioning.utils.opts as opts
 import captioning.models as models
 from captioning.data.dataloader import *
@@ -31,12 +32,10 @@ def add_summary_value(writer, key, value, iteration):
     if writer:
         writer.add_scalar(key, value, iteration)
 
-def train(rank, opt, world_size):
-    hvd.init()
-    torch.cuda.set_device(hvd.local_rank())
-
-    if world_size > 1:
-        setup(opt)
+def train(opt):
+    setup(opt)
+    # hvd.init()
+    # torch.cuda.set_device(hvd.local_rank())
     
     ################################
     # Build dataloader
@@ -80,7 +79,10 @@ def train(rank, opt, world_size):
     # Build model
     ##########################
     opt.vocab = loader.get_vocab()
-    model = models.setup(opt).cuda()
+    model = models.setup(opt)
+    if not opt.cpu:
+        model = model.cuda()
+
     del opt.vocab
     # Load pretrained weights:
     if opt.start_from is not None and os.path.isfile(os.path.join(opt.start_from, 'model.pth')):
@@ -111,9 +113,9 @@ def train(rank, opt, world_size):
     if opt.start_from is not None and os.path.isfile(os.path.join(opt.start_from,"optimizer.pth")):
         optimizer.load_state_dict(torch.load(os.path.join(opt.start_from, 'optimizer.pth')))
 
-    optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters())
-    hvd.broadcast_parameters(model.state_dict(), root_rank=0)
-    hvd.broadcast_optimizer_state(optimizer, root_rank=0)
+    # optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters())
+    # hvd.broadcast_parameters(model.state_dict(), root_rank=0)
+    # hvd.broadcast_optimizer_state(optimizer, root_rank=0)
 
     #########################
     # Get ready to start
@@ -186,11 +188,19 @@ def train(rank, opt, world_size):
             data = loader.get_batch('train')
             print('Read data:', time.time() - start)
 
-            torch.cuda.synchronize()
+            ### 수정된 부분 ###
+            dist.barrier()
+            # torch.cuda.synchronize()
+            ###################
+
             start = time.time()
 
             tmp = [data['fc_feats'], data['att_feats'], data['labels'], data['masks'], data['att_masks']]
-            tmp = [_ if _ is None else _.cuda() for _ in tmp]
+
+            if opt.cpu:
+                tmp = [_ if _ is None else _ for _ in tmp]
+            else:
+                tmp = [_ if _ is None else _.cuda() for _ in tmp]
             fc_feats, att_feats, labels, masks, att_masks = tmp
             
             optimizer.zero_grad()
@@ -214,14 +224,19 @@ def train(rank, opt, world_size):
                 getattr(torch.nn.utils, 'clip_grad_%s_' %(opt.grad_clip_mode))(model.parameters(), opt.grad_clip_value)
                 
             ### 수정된 부분 ###
-            print("Averaging gradients...")
+            # print("Averaging gradients...")
             average_gradients(model)
-            print("Gradient averaging completed!")
+            # print("Gradient averaging completed!")
             ###################
             
             optimizer.step()
             train_loss = loss.item()
-            torch.cuda.synchronize()
+            
+            ### 수정된 부분 ###
+            dist.barrier()
+            # torch.cuda.synchronize()
+            ###################
+
             end = time.time()
             if struc_flag:
                 print("iter {} (epoch {}), train_loss = {:.3f}, lm_loss = {:.3f}, struc_loss = {:.3f}, time/batch = {:.3f}" \
@@ -319,7 +334,9 @@ def train(rank, opt, world_size):
         stack_trace = traceback.format_exc()
         print(stack_trace)
 
+    cleanup()
+
 
 if __name__ == "__main__":
     opt = opts.parse_opt()
-    train(0, opt, 1 )
+    train(opt)
