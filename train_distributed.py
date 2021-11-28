@@ -141,7 +141,7 @@ def train(opt):
     try:
         ### 수정된 부분 ###
         num_of_workers = int(os.environ["WORLD_SIZE"])
-        K = np.ceil(epoch**(1/3) / num_of_workers)
+        K = np.ceil((epoch + 1)**(1/3) / num_of_workers)
         counter = 0
         ###################
 
@@ -188,6 +188,9 @@ def train(opt):
                 if counter == K:
                     # exchange
                     average_weights(model)
+                    counter = 0
+                else:
+                    counter += 1
                 ###################
                 
 
@@ -241,7 +244,7 @@ def train(opt):
             # average_gradients(model)
             # print("Gradient averaging completed!")
 
-            gamma = num_of_workers / (epoch**(2/3))
+            gamma = num_of_workers / ((epoch + 1)**(2/3))
             
             for param in model.parameters():
                 param.set_(param - gamma*param.grad.data)
