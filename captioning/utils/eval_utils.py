@@ -41,6 +41,8 @@ def getCOCO(dataset):
         annFile = 'coco-caption/annotations/captions_val2014.json'
     elif 'flickr30k' in dataset or 'f30k' in dataset:
         annFile = 'data/f30k_captions4eval.json'
+    elif 'flickr8k' in dataset or 'f8k' in dataset:
+        annFile = 'data/f8k_captions4eval.json'
     return COCO(annFile)
 
 
@@ -57,6 +59,8 @@ def language_eval(dataset, preds, preds_n, eval_kwargs, split):
             dataset_file = 'data/dataset_coco.json'
         elif 'flickr30k' in dataset or 'f30k' in dataset:
             dataset_file = 'data/dataset_flickr30k.json'
+        elif 'flickr8k' in dataset or 'f8k' in dataset:
+            dataset_file = 'data/dataset_flickr8k.json'
         training_sentences = set([' '.join(__['tokens']) for _ in json.load(open(dataset_file))['images'] if not _['split'] in ['val', 'test'] for __ in _['sentences']])
         generated_sentences = set([_['caption'] for _ in preds_n])
         novels = generated_sentences - training_sentences
