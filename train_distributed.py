@@ -246,8 +246,9 @@ def train(opt):
 
             gamma = num_of_workers / ((epoch + 1)**(2/3))
             
-            for param in model.parameters():
-                param.set_(param - gamma*param.grad.data)
+            with torch.no_grad():
+                for param in model.parameters():
+                    param.set_(param - gamma*param.grad.data)
 
             ###################
             
