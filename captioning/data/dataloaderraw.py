@@ -49,13 +49,13 @@ class DataLoaderRaw():
 
         print(len(self.coco_json))
         if len(self.coco_json) > 0:
-            print('reading from ' + opt.coco_json)
+            print('reading from ' + opt["coco_json"])
             # read in filenames from the coco-style json file
             self.coco_annotation = json.load(open(self.coco_json))
             for k,v in enumerate(self.coco_annotation['images']):
-                fullpath = os.path.join(self.folder_path, v['file_name'])
+                fullpath = os.path.join(self.folder_path, v['filename'])
                 self.files.append(fullpath)
-                self.ids.append(v['id'])
+                self.ids.append(v['imgid'])
         else:
             # read in all the filenames from the folder
             print('listing all images in directory ' + self.folder_path)

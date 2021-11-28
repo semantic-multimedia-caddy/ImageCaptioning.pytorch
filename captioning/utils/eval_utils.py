@@ -17,12 +17,15 @@ import sys
 from . import misc as utils
 
 # load coco-caption if available
-try:
-    sys.path.append("coco-caption")
-    from pycocotools.coco import COCO
-    from pycocoevalcap.eval import COCOEvalCap
-except:
-    print('Warning: coco-caption not available')
+sys.path.append("coco-caption")
+from pycocotools.coco import COCO
+from pycocoevalcap.eval import COCOEvalCap
+# try:
+#     sys.path.append("coco-caption")
+#     from pycocotools.coco import COCO
+#     from pycocoevalcap.eval import COCOEvalCap
+# except:
+#     print('Warning: coco-caption not available')
 
 bad_endings = ['a','an','the','in','for','at','of','with','before','after','on','upon','near','to','is','are','am']
 bad_endings += ['the']
@@ -78,8 +81,13 @@ def language_eval(dataset, preds, preds_n, eval_kwargs, split):
     coco = getCOCO(dataset)
     valids = coco.getImgIds()
 
+    # print(preds)
+    # print("\n\n===========================")
+    # print(valids)
+    # print("===========================")
     # filter results to only those in MSCOCO validation set
     preds_filt = [p for p in preds if p['image_id'] in valids]
+    # print(len(preds_filt))
     mean_perplexity = sum([_['perplexity'] for _ in preds_filt]) / len(preds_filt)
     mean_entropy = sum([_['entropy'] for _ in preds_filt]) / len(preds_filt)
     print('using %d/%d predictions' % (len(preds_filt), len(preds)))
@@ -136,7 +144,8 @@ def eval_split(model, crit, loader, eval_kwargs={}):
     num_images = eval_kwargs.get('num_images', eval_kwargs.get('val_images_use', -1))
     split = eval_kwargs.get('split', 'val')
     lang_eval = eval_kwargs.get('language_eval', 0)
-    dataset = eval_kwargs.get('dataset', 'coco')
+    # dataset = eval_kwargs.get('dataset', 'coco')
+    dataset = eval_kwargs.get('dataset', 'flickr8k')
     beam_size = eval_kwargs.get('beam_size', 1)
     sample_n = eval_kwargs.get('sample_n', 1)
     remove_bad_endings = eval_kwargs.get('remove_bad_endings', 0)
@@ -154,8 +163,36 @@ def eval_split(model, crit, loader, eval_kwargs={}):
     loss_evals = 1e-8
     predictions = []
     n_predictions = [] # when sample_n > 1
+
+    ### 수정한 부분 ###
+    # start_index = 6000
+    # end_index = 6100
+
+    # for _ in range(60):
+    #     loader.get_batch(split)
+    ###################
+
+
     while True:
+        ### 수정한 부분 ###
+        # if start_index == 7000:
+        #     break
+
+        # data = list(map(lambda index: loader.dataset[index], range(start_index, end_index)))
+        # start_index += 100
+        # end_index += 100
+        ###################
+
         data = loader.get_batch(split)
+        # print(data.keys())
+
+        ### 수정한 부분 ###
+        # indices = list(filter(lambda ind: ))
+        # data = list(filter(lambda sample: int(sample["id"]) >= 6000, data))
+        # if len(data) == 0:
+        #     continue
+        ###################
+
         n = n + len(data['infos'])
 
         tmp = [data['fc_feats'], data['att_feats'], data['labels'], data['masks'], data['att_masks']]
@@ -207,12 +244,12 @@ def eval_split(model, crit, loader, eval_kwargs={}):
             ix1 = min(ix1, num_images)
         else:
             num_images = ix1
-        # for i in range(n - ix1):
-        #     predictions.pop()
+        for i in range(n - ix1):
+            predictions.pop()
 
         ##### 수정한 부분 #####
-        while len(predictions) > 0:
-            predictions.pop()
+        # while len(predictions) > 0:
+        #     predictions.pop()
         ######################
 
         if verbose:

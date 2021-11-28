@@ -20,6 +20,7 @@ from collections import defaultdict
 import captioning.utils.opts as opts
 import captioning.models as models
 from captioning.data.dataloader_distributed import *
+# from captioning.data.dataloader import *
 import skimage.io
 import captioning.utils.eval_utils as eval_utils
 import captioning.utils.misc as utils
@@ -304,51 +305,51 @@ def train(opt):
             infos['loader_state_dict'] = loader.state_dict()
             
             # make evaluation on validation set, and save model
-            if (iteration % opt.save_checkpoint_every == 0 and not opt.save_every_epoch) or \
-                (epoch_done and opt.save_every_epoch):
-                # eval model
-                eval_kwargs = {'split': 'val',
-                                'dataset': opt.input_json}
-                eval_kwargs.update(vars(opt))
-                # val_loss, predictions, lang_stats = eval_utils.eval_split(
-                #     dp_model, lw_model.crit, loader, eval_kwargs)
-                val_loss, predictions, lang_stats = eval_utils.eval_split(
-                    model, lw_model.crit, loader, eval_kwargs)
+            # if (iteration % opt.save_checkpoint_every == 0 and not opt.save_every_epoch) or \
+            #     (epoch_done and opt.save_every_epoch):
+            #     # eval model
+            #     eval_kwargs = {'split': 'val',
+            #                     'dataset': opt.input_json}
+            #     eval_kwargs.update(vars(opt))
+            #     # val_loss, predictions, lang_stats = eval_utils.eval_split(
+            #     #     dp_model, lw_model.crit, loader, eval_kwargs)
+            #     val_loss, predictions, lang_stats = eval_utils.eval_split(
+            #         model, lw_model.crit, loader, eval_kwargs)
 
-                if opt.reduce_on_plateau:
-                    if 'CIDEr' in lang_stats:
-                        optimizer.scheduler_step(-lang_stats['CIDEr'])
-                    else:
-                        optimizer.scheduler_step(val_loss)
-                # Write validation result into summary
-                tb_summary_writer.add_scalar('validation loss', val_loss, iteration)
-                if lang_stats is not None:
-                    for k,v in lang_stats.items():
-                        tb_summary_writer.add_scalar(k, v, iteration)
-                histories['val_result_history'][iteration] = {'loss': val_loss, 'lang_stats': lang_stats, 'predictions': predictions}
+            #     if opt.reduce_on_plateau:
+            #         if 'CIDEr' in lang_stats:
+            #             optimizer.scheduler_step(-lang_stats['CIDEr'])
+            #         else:
+            #             optimizer.scheduler_step(val_loss)
+            #     # Write validation result into summary
+            #     tb_summary_writer.add_scalar('validation loss', val_loss, iteration)
+            #     if lang_stats is not None:
+            #         for k,v in lang_stats.items():
+            #             tb_summary_writer.add_scalar(k, v, iteration)
+            #     histories['val_result_history'][iteration] = {'loss': val_loss, 'lang_stats': lang_stats, 'predictions': predictions}
 
-                # Save model if is improving on validation result
-                if opt.language_eval == 1:
-                    current_score = lang_stats['CIDEr']
-                else:
-                    current_score = - val_loss
+            #     # Save model if is improving on validation result
+            #     if opt.language_eval == 1:
+            #         current_score = lang_stats['CIDEr']
+            #     else:
+            #         current_score = - val_loss
 
-                best_flag = False
+            #     best_flag = False
 
-                if best_val_score is None or current_score > best_val_score:
-                    best_val_score = current_score
-                    best_flag = True
+            #     if best_val_score is None or current_score > best_val_score:
+            #         best_val_score = current_score
+            #         best_flag = True
 
-                # Dump miscalleous informations
-                infos['best_val_score'] = best_val_score
+            #     # Dump miscalleous informations
+            #     infos['best_val_score'] = best_val_score
 
-                utils.save_checkpoint(opt, model, infos, optimizer, histories)
-                if opt.save_history_ckpt:
-                    utils.save_checkpoint(opt, model, infos, optimizer,
-                        append=str(epoch) if opt.save_every_epoch else str(iteration))
+            #     utils.save_checkpoint(opt, model, infos, optimizer, histories)
+            #     if opt.save_history_ckpt:
+            #         utils.save_checkpoint(opt, model, infos, optimizer,
+            #             append=str(epoch) if opt.save_every_epoch else str(iteration))
 
-                if best_flag:
-                    utils.save_checkpoint(opt, model, infos, optimizer, append='best')
+            #     if best_flag:
+            #         utils.save_checkpoint(opt, model, infos, optimizer, append='best')
 
     except (RuntimeError, KeyboardInterrupt):
         print('Save ckpt on exception ...')
@@ -358,6 +359,7 @@ def train(opt):
         print(stack_trace)
 
     # cleanup()
+    utils.save_checkpoint(opt, model, infos, optimizer)
 
 
 if __name__ == "__main__":
