@@ -186,170 +186,168 @@ def train(opt):
                     drop_worst_flag = False
 
                 ### 수정된 부분 ###
-                if counter == K:
-                    # exchange
-                    average_weights(model)
-                    counter = 0
-                else:
-                    counter += 1
+                # exchange
+                average_weights(model)
+                K = np.ceil((epoch + 1)**(1/3) / num_of_workers)
                 ###################
                 
 
                 epoch_done = False
                     
-            start = time.time()
-            if opt.use_warmup and (iteration < opt.noamopt_warmup):
-                opt.current_lr = opt.learning_rate * (iteration+1) / opt.noamopt_warmup
-                utils.set_lr(optimizer, opt.current_lr)
-            # Load data from train split (0)
-            data = loader.get_batch('train')
-            print('Read data:', time.time() - start)
+            for k in range(K):
+                start = time.time()
+                if opt.use_warmup and (iteration < opt.noamopt_warmup):
+                    opt.current_lr = opt.learning_rate * (iteration+1) / opt.noamopt_warmup
+                    utils.set_lr(optimizer, opt.current_lr)
+                # Load data from train split (0)
+                data = loader.get_batch('train')
+                print('Read data:', time.time() - start)
 
-            ### 수정된 부분 ###
-            dist.barrier()
-            # torch.cuda.synchronize()
-            ###################
+                ### 수정된 부분 ###
+                dist.barrier()
+                # torch.cuda.synchronize()
+                ###################
 
-            start = time.time()
+                start = time.time()
 
-            tmp = [data['fc_feats'], data['att_feats'], data['labels'], data['masks'], data['att_masks']]
+                tmp = [data['fc_feats'], data['att_feats'], data['labels'], data['masks'], data['att_masks']]
 
-            if opt.cpu:
-                tmp = [_ if _ is None else _ for _ in tmp]
-            else:
-                tmp = [_ if _ is None else _.cuda() for _ in tmp]
-            fc_feats, att_feats, labels, masks, att_masks = tmp
-            
-            optimizer.zero_grad()
-
-            # print(fc_feats.size())
-            # print(att_feats.size()) 
-            # print(labels.size()) 
-            # print(masks.size())
-
-            # model_out = dp_lw_model(fc_feats, att_feats, labels, masks, att_masks, data['gts'], torch.arange(0, len(data['gts'])), sc_flag, struc_flag, drop_worst_flag)
-            model_out = lw_model(fc_feats, att_feats, labels, masks, att_masks, data['gts'], torch.arange(0, len(data['gts'])), sc_flag, struc_flag, drop_worst_flag)
-
-            if not drop_worst_flag:
-                loss = model_out['loss'].mean()
-            else:
-                loss = model_out['loss']
-                loss = torch.topk(loss, k=int(loss.shape[0] * (1-opt.drop_worst_rate)), largest=False)[0].mean()
-
-            loss.backward()
-            if opt.grad_clip_value != 0:
-                getattr(torch.nn.utils, 'clip_grad_%s_' %(opt.grad_clip_mode))(model.parameters(), opt.grad_clip_value)
+                if opt.cpu:
+                    tmp = [_ if _ is None else _ for _ in tmp]
+                else:
+                    tmp = [_ if _ is None else _.cuda() for _ in tmp]
+                fc_feats, att_feats, labels, masks, att_masks = tmp
                 
-            ### 수정된 부분 ###
-            # print("Averaging gradients...")
-            # average_gradients(model)
-            # print("Gradient averaging completed!")
+                optimizer.zero_grad()
 
-            gamma = num_of_workers / ((epoch + 1)**(2/3))
-            
-            with torch.no_grad():
-                for param in model.parameters():
-                    param.set_(param - gamma*param.grad.data)
+                # print(fc_feats.size())
+                # print(att_feats.size()) 
+                # print(labels.size()) 
+                # print(masks.size())
 
-            ###################
-            
-            optimizer.step()
-            train_loss = loss.item()
-            
-            ### 수정된 부분 ###
-            dist.barrier()
-            # torch.cuda.synchronize()
-            ###################
+                # model_out = dp_lw_model(fc_feats, att_feats, labels, masks, att_masks, data['gts'], torch.arange(0, len(data['gts'])), sc_flag, struc_flag, drop_worst_flag)
+                model_out = lw_model(fc_feats, att_feats, labels, masks, att_masks, data['gts'], torch.arange(0, len(data['gts'])), sc_flag, struc_flag, drop_worst_flag)
 
-            end = time.time()
-            if struc_flag:
-                print("iter {} (epoch {}), train_loss = {:.3f}, lm_loss = {:.3f}, struc_loss = {:.3f}, time/batch = {:.3f}" \
-                    .format(iteration, epoch, train_loss, model_out['lm_loss'].mean().item(), model_out['struc_loss'].mean().item(), end - start))
-            elif not sc_flag:
-                print("iter {} (epoch {}), train_loss = {:.3f}, time/batch = {:.3f}" \
-                    .format(iteration, epoch, train_loss, end - start))
-            else:
-                print("iter {} (epoch {}), avg_reward = {:.3f}, time/batch = {:.3f}" \
-                    .format(iteration, epoch, model_out['reward'].mean(), end - start))
+                if not drop_worst_flag:
+                    loss = model_out['loss'].mean()
+                else:
+                    loss = model_out['loss']
+                    loss = torch.topk(loss, k=int(loss.shape[0] * (1-opt.drop_worst_rate)), largest=False)[0].mean()
 
-            # Update the iteration and epoch
-            iteration += 1
-            if data['bounds']['wrapped']:
-                epoch += 1
-                epoch_done = True
+                loss.backward()
+                if opt.grad_clip_value != 0:
+                    getattr(torch.nn.utils, 'clip_grad_%s_' %(opt.grad_clip_mode))(model.parameters(), opt.grad_clip_value)
+                    
+                ### 수정된 부분 ###
+                # print("Averaging gradients...")
+                # average_gradients(model)
+                # print("Gradient averaging completed!")
 
-            # Write the training loss summary
-            if (iteration % opt.losses_log_every == 0):
-                tb_summary_writer.add_scalar('train_loss', train_loss, iteration)
-                if opt.noamopt:
-                    opt.current_lr = optimizer.rate()
-                elif opt.reduce_on_plateau:
-                    opt.current_lr = optimizer.current_lr
-                tb_summary_writer.add_scalar('learning_rate', opt.current_lr, iteration)
-                tb_summary_writer.add_scalar('scheduled_sampling_prob', model.ss_prob, iteration)
-                if sc_flag:
-                    tb_summary_writer.add_scalar('avg_reward', model_out['reward'].mean(), iteration)
-                elif struc_flag:
-                    tb_summary_writer.add_scalar('lm_loss', model_out['lm_loss'].mean().item(), iteration)
-                    tb_summary_writer.add_scalar('struc_loss', model_out['struc_loss'].mean().item(), iteration)
-                    tb_summary_writer.add_scalar('reward', model_out['reward'].mean().item(), iteration)
-                    tb_summary_writer.add_scalar('reward_var', model_out['reward'].var(1).mean(), iteration)
+                gamma = num_of_workers / ((epoch + 1)**(2/3))
+                
+                with torch.no_grad():
+                    for param in model.parameters():
+                        param.set_(param - gamma*param.grad.data)
 
-                histories['loss_history'][iteration] = train_loss if not sc_flag else model_out['reward'].mean()
-                histories['lr_history'][iteration] = opt.current_lr
-                histories['ss_prob_history'][iteration] = model.ss_prob
+                ###################
+                
+                optimizer.step()
+                train_loss = loss.item()
+                
+                ### 수정된 부분 ###
+                dist.barrier()
+                # torch.cuda.synchronize()
+                ###################
 
-            # update infos
-            infos['iter'] = iteration
-            infos['epoch'] = epoch
-            infos['loader_state_dict'] = loader.state_dict()
-            
-            # make evaluation on validation set, and save model
-            # if (iteration % opt.save_checkpoint_every == 0 and not opt.save_every_epoch) or \
-            #     (epoch_done and opt.save_every_epoch):
-            #     # eval model
-            #     eval_kwargs = {'split': 'val',
-            #                     'dataset': opt.input_json}
-            #     eval_kwargs.update(vars(opt))
-            #     # val_loss, predictions, lang_stats = eval_utils.eval_split(
-            #     #     dp_model, lw_model.crit, loader, eval_kwargs)
-            #     val_loss, predictions, lang_stats = eval_utils.eval_split(
-            #         model, lw_model.crit, loader, eval_kwargs)
+                end = time.time()
+                if struc_flag:
+                    print("iter {} (epoch {}), train_loss = {:.3f}, lm_loss = {:.3f}, struc_loss = {:.3f}, time/batch = {:.3f}" \
+                        .format(iteration, epoch, train_loss, model_out['lm_loss'].mean().item(), model_out['struc_loss'].mean().item(), end - start))
+                elif not sc_flag:
+                    print("iter {} (epoch {}), train_loss = {:.3f}, time/batch = {:.3f}" \
+                        .format(iteration, epoch, train_loss, end - start))
+                else:
+                    print("iter {} (epoch {}), avg_reward = {:.3f}, time/batch = {:.3f}" \
+                        .format(iteration, epoch, model_out['reward'].mean(), end - start))
 
-            #     if opt.reduce_on_plateau:
-            #         if 'CIDEr' in lang_stats:
-            #             optimizer.scheduler_step(-lang_stats['CIDEr'])
-            #         else:
-            #             optimizer.scheduler_step(val_loss)
-            #     # Write validation result into summary
-            #     tb_summary_writer.add_scalar('validation loss', val_loss, iteration)
-            #     if lang_stats is not None:
-            #         for k,v in lang_stats.items():
-            #             tb_summary_writer.add_scalar(k, v, iteration)
-            #     histories['val_result_history'][iteration] = {'loss': val_loss, 'lang_stats': lang_stats, 'predictions': predictions}
+                # Update the iteration and epoch
+                iteration += 1
+                if data['bounds']['wrapped']:
+                    epoch += 1
+                    epoch_done = True
 
-            #     # Save model if is improving on validation result
-            #     if opt.language_eval == 1:
-            #         current_score = lang_stats['CIDEr']
-            #     else:
-            #         current_score = - val_loss
+                # Write the training loss summary
+                if (iteration % opt.losses_log_every == 0):
+                    tb_summary_writer.add_scalar('train_loss', train_loss, iteration)
+                    if opt.noamopt:
+                        opt.current_lr = optimizer.rate()
+                    elif opt.reduce_on_plateau:
+                        opt.current_lr = optimizer.current_lr
+                    tb_summary_writer.add_scalar('learning_rate', opt.current_lr, iteration)
+                    tb_summary_writer.add_scalar('scheduled_sampling_prob', model.ss_prob, iteration)
+                    if sc_flag:
+                        tb_summary_writer.add_scalar('avg_reward', model_out['reward'].mean(), iteration)
+                    elif struc_flag:
+                        tb_summary_writer.add_scalar('lm_loss', model_out['lm_loss'].mean().item(), iteration)
+                        tb_summary_writer.add_scalar('struc_loss', model_out['struc_loss'].mean().item(), iteration)
+                        tb_summary_writer.add_scalar('reward', model_out['reward'].mean().item(), iteration)
+                        tb_summary_writer.add_scalar('reward_var', model_out['reward'].var(1).mean(), iteration)
 
-            #     best_flag = False
+                    histories['loss_history'][iteration] = train_loss if not sc_flag else model_out['reward'].mean()
+                    histories['lr_history'][iteration] = opt.current_lr
+                    histories['ss_prob_history'][iteration] = model.ss_prob
 
-            #     if best_val_score is None or current_score > best_val_score:
-            #         best_val_score = current_score
-            #         best_flag = True
+                # update infos
+                infos['iter'] = iteration
+                infos['epoch'] = epoch
+                infos['loader_state_dict'] = loader.state_dict()
+                
+                # make evaluation on validation set, and save model
+                # if (iteration % opt.save_checkpoint_every == 0 and not opt.save_every_epoch) or \
+                #     (epoch_done and opt.save_every_epoch):
+                #     # eval model
+                #     eval_kwargs = {'split': 'val',
+                #                     'dataset': opt.input_json}
+                #     eval_kwargs.update(vars(opt))
+                #     # val_loss, predictions, lang_stats = eval_utils.eval_split(
+                #     #     dp_model, lw_model.crit, loader, eval_kwargs)
+                #     val_loss, predictions, lang_stats = eval_utils.eval_split(
+                #         model, lw_model.crit, loader, eval_kwargs)
 
-            #     # Dump miscalleous informations
-            #     infos['best_val_score'] = best_val_score
+                #     if opt.reduce_on_plateau:
+                #         if 'CIDEr' in lang_stats:
+                #             optimizer.scheduler_step(-lang_stats['CIDEr'])
+                #         else:
+                #             optimizer.scheduler_step(val_loss)
+                #     # Write validation result into summary
+                #     tb_summary_writer.add_scalar('validation loss', val_loss, iteration)
+                #     if lang_stats is not None:
+                #         for k,v in lang_stats.items():
+                #             tb_summary_writer.add_scalar(k, v, iteration)
+                #     histories['val_result_history'][iteration] = {'loss': val_loss, 'lang_stats': lang_stats, 'predictions': predictions}
 
-            #     utils.save_checkpoint(opt, model, infos, optimizer, histories)
-            #     if opt.save_history_ckpt:
-            #         utils.save_checkpoint(opt, model, infos, optimizer,
-            #             append=str(epoch) if opt.save_every_epoch else str(iteration))
+                #     # Save model if is improving on validation result
+                #     if opt.language_eval == 1:
+                #         current_score = lang_stats['CIDEr']
+                #     else:
+                #         current_score = - val_loss
 
-            #     if best_flag:
-            #         utils.save_checkpoint(opt, model, infos, optimizer, append='best')
+                #     best_flag = False
+
+                #     if best_val_score is None or current_score > best_val_score:
+                #         best_val_score = current_score
+                #         best_flag = True
+
+                #     # Dump miscalleous informations
+                #     infos['best_val_score'] = best_val_score
+
+                #     utils.save_checkpoint(opt, model, infos, optimizer, histories)
+                #     if opt.save_history_ckpt:
+                #         utils.save_checkpoint(opt, model, infos, optimizer,
+                #             append=str(epoch) if opt.save_every_epoch else str(iteration))
+
+                #     if best_flag:
+                #         utils.save_checkpoint(opt, model, infos, optimizer, append='best')
 
     except (RuntimeError, KeyboardInterrupt):
         print('Save ckpt on exception ...')
