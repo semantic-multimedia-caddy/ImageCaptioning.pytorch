@@ -33,21 +33,29 @@ def average_gradients(model):
 
     for param in model.parameters():
         # print("reducing...")
-
-        # if rank == 0:
-        #     t = torch.zeros_like(param.grad.data)
-        #     for w in range(1, world_size):
-        #         dist.recv(t, w)
-
-        #     param.grad.data += t
-        # else:
-        #     dist.send(param.grad.data, 0)
         dist.reduce(param.grad.data, 0, op=dist.ReduceOp.SUM)
+        param.grad.data /= size
         # param.grad.data = grad_tensor
 
         # print("broadcasting...")
         dist.broadcast(param.grad.data, 0)
-        param.grad.data /= size
+
+    
+""" 파라미터 평균 계산하기 """
+def average_weights(model):
+    # rank = int(os.environ["RANK"])
+    # world_size = int(os.environ["WORLD_SIZE"])
+    size = float(dist.get_world_size())
+
+    for param in model.parameters():
+        # print("reducing...")
+        dist.reduce(param.data, 0, op=dist.ReduceOp.SUM)
+        param.data /= size
+        # param.grad.data = grad_tensor
+
+        # print("broadcasting...")
+        dist.broadcast(param.data, 0)
+        print(param.data)
 
     
         

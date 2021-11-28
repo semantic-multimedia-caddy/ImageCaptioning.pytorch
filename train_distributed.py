@@ -19,13 +19,13 @@ from collections import defaultdict
 # import horovod.torch as hvd
 import captioning.utils.opts as opts
 import captioning.models as models
-from captioning.data.dataloader import *
+from captioning.data.dataloader_distributed import *
 import skimage.io
 import captioning.utils.eval_utils as eval_utils
 import captioning.utils.misc as utils
 from captioning.utils.rewards import init_scorer, get_self_critical_reward
 from captioning.modules.loss_wrapper import LossWrapper
-from distributed_utils import average_gradients, setup, cleanup
+from distributed_utils import average_weights, setup, cleanup
 
 
 def add_summary_value(writer, key, value, iteration):
@@ -139,6 +139,12 @@ def train(opt):
 
     # Start training
     try:
+        ### 수정된 부분 ###
+        num_of_workers = int(os.environ["WORLD_SIZE"])
+        K = np.ceil(epoch**(1/3) / num_of_workers)
+        counter = 0
+        ###################
+
         while True:
             # Stop if reaching max epochs
             if epoch >= opt.max_epochs and opt.max_epochs != -1:
@@ -177,6 +183,13 @@ def train(opt):
                     drop_worst_flag = True
                 else:
                     drop_worst_flag = False
+
+                ### 수정된 부분 ###
+                if counter == K:
+                    # exchange
+                    average_weights(model)
+                ###################
+                
 
                 epoch_done = False
                     
@@ -225,8 +238,14 @@ def train(opt):
                 
             ### 수정된 부분 ###
             # print("Averaging gradients...")
-            average_gradients(model)
+            # average_gradients(model)
             # print("Gradient averaging completed!")
+
+            gamma = num_of_workers / (epoch**(2/3))
+            
+            for param in model.parameters():
+                param.set_(param - gamma*param.grad.data)
+
             ###################
             
             optimizer.step()
@@ -334,7 +353,7 @@ def train(opt):
         stack_trace = traceback.format_exc()
         print(stack_trace)
 
-    cleanup()
+    # cleanup()
 
 
 if __name__ == "__main__":
