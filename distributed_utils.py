@@ -55,7 +55,7 @@ def average_weights(model):
 
         # print("broadcasting...")
         dist.broadcast(param.data, 0)
-        print(param.data)
+        # print(param.data)
 
     
         
