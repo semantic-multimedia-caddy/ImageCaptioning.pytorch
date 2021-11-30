@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -357,4 +358,9 @@ def train(opt):
 
 if __name__ == "__main__":
     opt = opts.parse_opt()
+
+    now = time.time()
     train(opt)
+    duration = time.time() - now
+
+    print(f"Duration: {duration} sec(s).")

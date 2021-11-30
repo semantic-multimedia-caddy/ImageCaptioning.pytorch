@@ -361,4 +361,9 @@ def train(opt):
 
 if __name__ == "__main__":
     opt = opts.parse_opt()
+
+    now = time.time()
     train(opt)
+    duration = time.time() - now
+
+    print(f"Duration: {duration} sec(s).")
