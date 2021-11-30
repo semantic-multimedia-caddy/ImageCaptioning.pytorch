@@ -250,7 +250,7 @@ def train(opt):
 
                 ###################
                 
-                optimizer.step()
+                # optimizer.step()
                 train_loss = loss.item()
                 
                 ### 수정된 부분 ###
