@@ -143,7 +143,6 @@ def train(opt):
         ### 수정된 부분 ###
         num_of_workers = int(os.environ["WORLD_SIZE"])
         K = int(np.ceil((epoch + 1)**(1/3) / num_of_workers))
-        counter = 0
         ###################
 
         while True:
