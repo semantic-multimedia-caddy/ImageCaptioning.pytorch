@@ -202,7 +202,7 @@ def train(opt):
             print('Read data:', time.time() - start)
 
             ### 수정된 부분 ###
-            # dist.barrier()
+            dist.barrier()
             # torch.cuda.synchronize()
             ###################
 
@@ -252,7 +252,7 @@ def train(opt):
             train_loss = loss.item()
             
             ### 수정된 부분 ###
-            # dist.barrier()
+            dist.barrier()
             # torch.cuda.synchronize()
             ###################
 
