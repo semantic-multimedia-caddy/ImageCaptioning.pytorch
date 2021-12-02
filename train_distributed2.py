@@ -192,6 +192,7 @@ def train(opt):
 
                 epoch_done = False
                     
+
             start = time.time()
             if opt.use_warmup and (iteration < opt.noamopt_warmup):
                 opt.current_lr = opt.learning_rate * (iteration+1) / opt.noamopt_warmup
@@ -201,7 +202,7 @@ def train(opt):
             print('Read data:', time.time() - start)
 
             ### 수정된 부분 ###
-            dist.barrier()
+            # dist.barrier()
             # torch.cuda.synchronize()
             ###################
 
@@ -245,14 +246,13 @@ def train(opt):
             with torch.no_grad():
                 for param in model.parameters():
                     param.set_(param - gamma*param.grad.data)
-
             ###################
             
             # optimizer.step()
             train_loss = loss.item()
             
             ### 수정된 부분 ###
-            dist.barrier()
+            # dist.barrier()
             # torch.cuda.synchronize()
             ###################
 
